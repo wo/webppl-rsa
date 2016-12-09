@@ -1,6 +1,5 @@
 console.log([
   exampleWebpplFn(41),
   exampleHeaderFn(41),  
-  exampleMacro(41),
   webpplPackageTemplate.exampleJavascriptFn(41),
 ]);
