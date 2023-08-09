@@ -1,5 +1,29 @@
-console.log([
-  exampleWebpplFn(41),
-  exampleHeaderFn(41),  
-  webpplInterlocutors.exampleJavascriptFn(41),
-]);
+'use strict';
+
+var runtest = function(descr, result, expected) {
+  console.log(descr);
+  console.log('expected: ' + expected);
+  console.log('result: ' + result);
+  if (result.toString() != expected.toString()) {
+    console.log('FAIL');
+  }
+  console.log('------------------');
+} 
+
+runtest(
+  'argmaxAll(function(x){return x*x;}, [1,2,3])',
+  argmaxAll(function(x){return x*x;}, [1,2,3]),
+  [3]
+);
+
+runtest(
+  'argmaxAll(function(x){return x*x;}, [1,2,3,-3,-2])',
+  argmaxAll(function(x){return x*x;}, [1,2,3,-3,-2]),
+  [-3,3]
+);
+
+runtest(
+  'expectation(Credence({2:0.5, 4:0.5}))',
+  expectation(Credence({2:0.5, 4:0.5})),
+  3
+);

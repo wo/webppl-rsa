@@ -1,5 +1,17 @@
-// WebPPL code goes here
-
-var exampleWebpplFn = function(x) {
-  return webpplInterlocutors.exampleJavascriptFn(x+2);
+var argmaxAll = function(fn, arr) {
+    // return list of all arr elements that maximize fn
+    var best_with_value = reduce(function(x,res){
+        return x[1] > res[1] ? [[x[0]],x[1]] : x[1] == res[1] ? [res[0].concat([x[0]]),x[1]] : res;
+    }, [[],-Infinity], zip(arr, map(fn, arr)));
+    return best_with_value[0];
 }
+
+var Credence = function(dict) {
+  // return Categorical distribution over keys in dict, with associated values as probabilities
+  return Categorical({vs: Object.keys(dict), ps:Object.values(dict)})
+}
+
+// var exampleWebpplFn = function(x) {
+//   return webpplInterlocutors.exampleJavascriptFn(x);
+// }
+

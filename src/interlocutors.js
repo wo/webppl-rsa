@@ -1,13 +1,12 @@
-// Javascript code goes here
+// Javascript code goes here; can be accessed in interlocutors.wppl as interlocutors.<functionName>
 
-var exampleJavascriptFn = function(x) {
-  for (var i=0; i<10; i++) {
-    x+=i;
-  }
-  return x;
-}
+// var exampleJavascriptFn = function(x) {
+//   for (var i=0; i<10; i++) {
+//     x+=i;
+//   }
+//   return x;
+// }
 
-module.exports = {
-  // Adjust exports here
-  exampleJavascriptFn: exampleJavascriptFn
-}
+// module.exports = {
+//   exampleJavascriptFn: exampleJavascriptFn
+// }

@@ -1,6 +1,6 @@
 {
   "name": "webppl-interlocutors",
-  "version": "0.1",
+  "version": "0.1.0",
   "description": "WebPPL library for modelling simple speakers and hearers",
   "webppl": {
     "wppl": [
