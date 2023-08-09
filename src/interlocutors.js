@@ -1,7 +1,10 @@
 // Javascript code goes here
 
 var exampleJavascriptFn = function(x) {
-  return x + 1;
+  for (var i=0; i<10; i++) {
+    x+=i;
+  }
+  return x;
 }
 
 module.exports = {

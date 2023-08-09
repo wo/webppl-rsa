@@ -1,0 +1,5 @@
+#+title: WebPPL Interlocutors
+
+A few helper functions to model speakers and hearers in the RSA framework.
+
+Test: `webppl test.wppl --require .`

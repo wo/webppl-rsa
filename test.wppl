@@ -1,5 +1,5 @@
 console.log([
   exampleWebpplFn(41),
   exampleHeaderFn(41),  
-  webpplPackageTemplate.exampleJavascriptFn(41),
+  webpplInterlocutors.exampleJavascriptFn(41),
 ]);
