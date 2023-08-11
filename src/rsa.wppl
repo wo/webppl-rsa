@@ -11,7 +11,19 @@ var Credence = function(dict) {
   return Categorical({vs: Object.keys(dict), ps:Object.values(dict)})
 }
 
-// var exampleWebpplFn = function(x) {
-//   return webpplInterlocutors.exampleJavascriptFn(x);
-// }
+var Agent = function(dict) {
+  var agentId = webpplRsa.getNewAgentId();
+  var credence = Categorical({vs: Object.keys(dict.credence), ps:Object.values(dict.credence)});
+  var options = webpplRsa.addAgentId(dict.options, agentId);
+  return {
+    id: agentId,
+    credence: credence,
+    utility: dict.utility,
+    options: options
+  }
+}
+
+var Utterance = function(dict) {
+  return webpplRsa.addAgentId([dict.utterance], agentId);
+}
 

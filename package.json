@@ -1,21 +1,21 @@
 {
-  "name": "webppl-interlocutors",
+  "name": "webppl-rsa",
   "version": "0.1.0",
   "description": "WebPPL library for modelling simple speakers and hearers",
   "webppl": {
     "wppl": [
-      "src/interlocutors.wppl"
+      "src/rsa.wppl"
     ],
     "headers": [
       "src/header.js"
     ]
   },
-  "main": "src/interlocutors.js",
+  "main": "src/rsa.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wo/webppl-interlocutors"
+    "url": "https://github.com/wo/webppl-rsa"
   },
-  "homepage": "https://github.com/wo/webppl-interlocutors",
+  "homepage": "https://github.com/wo/webppl-rsa",
   "devDependencies": {
     "grunt": "^1.6.1",
     "grunt-contrib-uglify": "^5.2.2"

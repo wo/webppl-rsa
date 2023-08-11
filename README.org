@@ -1,4 +1,4 @@
-#+title: WebPPL Interlocutors
+#+title: WebPPL RSA
 
 A few helper functions to model speakers and hearers in the RSA framework.
 
