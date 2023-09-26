@@ -1,11 +1,12 @@
 'use strict';
+// run with 
 
 var runtest = function(descr, result, expected) {
   console.log(descr);
   console.log('expected: ' + expected);
-  console.log('result: ' + result);
+  console.log('result:   ' + result);
   if (result.toString() != expected.toString()) {
-    console.log('FAIL');
+    console.log('\nFAIL\n');
   }
   console.log('------------------');
 } 
@@ -27,3 +28,46 @@ runtest(
   expectation(Credence({2:0.5, 4:0.5})),
   3
 );
+
+runtest(
+  'Cross([{a:1}, {a:2}], [{b:1}, {b:-1}])',
+  JSON.stringify(Cross([{a:1}, {a:2}], [{b:1}, {b:-1}])),
+  '[{"a":1,"b":1},{"a":1,"b":-1},{"a":2,"b":1},{"a":2,"b":-1}]'
+);
+
+runtest(
+  'Cross([{a:0}], [{b:1}, {b:-1}], [{c:1}, {c:2}, {c:3}])',
+  JSON.stringify(Cross([{a:0}], [{b:1}, {b:-1}], [{c:1}, {c:2}, {c:3}])),
+  '[{"a":0,"b":1,"c":1},{"a":0,"b":1,"c":2},{"a":0,"b":1,"c":3},{"a":0,"b":-1,"c":1},{"a":0,"b":-1,"c":2},{"a":0,"b":-1,"c":3}]'
+);
+
+runtest(
+  'CrossExpandDict([{a:[1,2], b:[3,4]}])',
+  JSON.stringify(CrossExpandDict([{a:[1,2], b:[3,4]}])),
+  '[[{"a":1},{"a":2}],[{"b":3},{"b":4}]]'
+);
+
+runtest(
+  'Cross({a:[1,2], b:[3,4]})',
+  JSON.stringify(Cross({a:[1,2], b:[3,4]})),
+  '[{"a":1,"b":3},{"a":1,"b":4},{"a":2,"b":3},{"a":2,"b":4}]'
+);
+
+runtest(
+  'CrossExpandStrings(["a","b"])',
+  JSON.stringify(CrossExpandStrings(['a','b'])),
+  '[[{"a":true},{"a":false}],[{"b":true},{"b":false}]]'
+);
+
+runtest(
+  'Cross("a","b")',
+  JSON.stringify(Cross("a","b")),
+  '[{"a":true,"b":true},{"a":true,"b":false},{"a":false,"b":true},{"a":false,"b":false}]'
+);
+
+// runtest(
+//   'Cross({weight: [1,2,3]}, {colour: ["red","green","blue"]}).length',
+//   Cross({weight: [1,2,3]}, {colour: ["red","green","blue"]}).length,
+//   9
+// );
+  

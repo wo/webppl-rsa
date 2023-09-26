@@ -1,29 +1,392 @@
+'use strict';
+
+var isDistribution = function(x) {
+    return x.sample ? true : false;
+};
+
+var assert = function(condition, message) {
+    webpplRsa.assert(condition, message);
+};
+
+// var note = function(condition, message) {
+//     webpplRsa.note(condition, message);
+// };
+
+/**
+ * Returns number of words in a string.
+ */
+var numWords = function(str) {
+    return str.split(' ').length;
+};
+
+
+/**
+ * Returns the keys of a dictionary (so that my example code looks less intimidating).
+ */
+var keys = function(dict) {
+    return _.keys(dict);
+};
+
+
+/**
+ * Defines an algebra of states by combining the dimensions of its arguments.
+ *
+ * @param {...*} arguments - strings/numbers, a dict, or lists of dicts
+ * @return {Object} A dict
+ *
+ * @example (with lists of dicts)
+ * var weight = [{ weight: 1 }, { weight: 2 }, { weight: 3 }];
+ * var colour = [{ colour: 'red' }, { colour: 'green' }, { colour: 'blue' }];
+ * var states = Cross(weight, colour);
+ * // [ { weight: 1, colour: 'red' }, { weight: 1, colour: 'green' }, ... ]
+ *
+ * (Think of the arguments as discrete random variables.)
+ * 
+ * @example (with dict)
+ * var states = Cross({ weight: [1,2,3], colour: ['red','green','blue'] });
+ * // [ { weight: 1, colour: 'red' }, { weight: 1, colour: 'green' }, ... ]
+ *
+ * @example (with strings)
+ * var states = Cross('sunny', 'cold');
+ * // [ { 'sunny': false, 'cold': false }, { 'sunny': false, 'cold': true }, ... ] 
+ *
+ */
+var Cross = function() {
+    var args = _.isArray(arguments[0]) ? arguments : // lists of dicts
+               _.isObject(arguments[0]) ? CrossExpandDict(arguments) : // dict
+               CrossExpandStrings(arguments); // strings
+    return reduce(function(sofar, next) {
+        // e.g. sofar = [ { a:1, b:1 }, { a:1, b:2 } ], next = [ {c:1}, {c:2} ]
+        // want to return [ { a:1, b:1, c:1 }, { a:1, b:1, c:2 }, { a:1, b:2, c:1 }, { a:1, b:2, c:2 } ]
+        var combined = map(function(x) {
+            // e.g. x = { a:1, b:1 }
+            // want to return [ { a:1, b:1, c:1 }, { a:1, b:1, c:2 } ]
+            return map(function(y) {
+                // e.g. y = {c:1}
+                // want to return { a:1, b:1, c:1 }
+                return extend(x, y);
+            }, next);
+        }, sofar);
+        // We have [ [ { a:1, b:1, c:1 }, { a:1, b:1, c:2 } ], [ { a:1, b:2, c:1 }, { a:1, b:2, c:2 } ] ]
+        // Need to flatten this.
+        return reduce(function(s, n) { return s.concat(n); }, [ ], combined);
+    }, [ {} ], args);
+};
+
+var CrossExpandDict = function(args) {
+    // convert [{ a: [1,2], b: [4,5] }] to [[{a:1}, {a:2}], [{b:4}, {b:5}]]
+    assert(args.length == 1, 'Cross: dict argument must be only argument');
+    var dict = args[0];
+    return map(function(key) {
+        // e.g. 'a'
+        // want to return [ {a:1}, {a:2} ]
+        return mapIndexed(function(i,val) {
+            // e.g. i=0, val=1
+            // want to return {a:1}
+            // This is tricky because objects are unmutable in webppl.
+            var trimmed = _.pick(dict, key); // {a: [1,2]}
+            return mapObject(function(k,v) { return v[i]; }, trimmed);
+        }, dict[key]);
+    }, _.keys(dict));
+};
+
+var CrossExpandStrings = function(args) {
+    // convert ['a', 'b'] to [[{a: true}, {a: false}], [{b: true}, {b: false}]]
+    return map(function(key) {
+        // e.g. 'a'
+        // want to return [ {a: true}, {a: false} ]
+        // Tricky because objects are unmutable in webppl.
+        return [webpplRsa.createObject(key, true), webpplRsa.createObject(key, false)];
+    }, args);
+};
+
+/**
+ * Partitions an array into an array of arrays by the return value of fn.
+ */
+var partition = function(arr, fn) {
+    var sameCell = function(x,y) { return fn(x) == fn(y); };
+    return groupBy(sameCell, arr);
+};
+
+var Question1 = function(name, fn) {
+    return webpplRsa.namedFunction(name, fn);
+};
+
+var Question2 = function(name, fn) {
+    webpplRsa.storeObject('question', name, fn);
+    return name;
+};
+
+var cell = function(states, question, state) {
+    // return array of states for which question returns the same value as for state
+    var fn = webpplRsa.getObject('question', question);
+    return filter(function(s) { return _.isEqual(fn(s), fn(state)) }, states);
+};
+
+var cell2 = function(question, state) {
+    // return the element of question that contains state.
+    return find(function(el) {
+        return any(function(s) { return _.isEqual(s, state); }, el);
+    }, question);
+};
+
+/**
+ * Converts a dictionary into a Categorical distribution.
+ * 
+ * @param {Array} dict - An associative array {key1: prob1, key2: prob2, ...}
+ * @return {Distribution} A Categorical distribution over the keys in dict.
+ */
+var Credence = function(dict) {
+    return Categorical({vs: Object.keys(dict), ps:Object.values(dict)});
+};
+
+/**
+ * Converts a list into a flat Categorical distribution over its elements.
+ * 
+ * @param {Array} list - A list of objects.
+ * @return {Distribution} A Categorical distribution over the elements of list.
+ */
+var Indifferent = function(list) {
+    return Categorical({ vs: list });
+};
+
+/**
+ * Converts a list into a random Categorical distribution over its elements.
+ *
+ * @param {Array} list - A list of objects.
+ * @return {Distribution} A Categorical distribution over the elements of list.
+ */
+var Random = function(list) {
+    var randVector = map(function(){return Math.random();}, list);
+    return Categorical({ vs: list, ps: randVector });
+};
+
+/**
+ * Conditionalizes a distribution on an event.
+ *
+ * @param {Distribution} distribution - A distribution.
+ * @param {Object} event - A "state" or array of states or function state -> boolean.
+ * @param {String} inferMethod - The Infer method to use when updating the distribution.
+ * @return {Distribution} A distribution that is conditioned on the event.
+ */
+var update = function(distribution, event, inferMethod) {
+    // conditionalize distribution on event (state or array of states or function state -> boolean)
+    var eventFn =
+        _.isFunction(event) ? event :
+        _.isArray(event) ? function(state) {
+            return any(function(s) { return _.isEqual(state, s) }, event);
+        } :
+        function(state) {
+            return _.isEqual(state, event);
+        };
+    var model = function() {
+        var state = sample(distribution);
+        condition(eventFn(state));
+        return state;
+    };
+    return inferMethod ? Infer({ method: inferMethod, model:model }) : Infer(model);
+};
+
+/**
+ * Defines a representation of an agent (e.g., a speaker or hearer).
+ * 
+ * @param {Array} dict - An associative array with the following keys.
+ *   credence: a Distribution or a dictionary of states and their probabilities
+ *   options (optional): a list of possible acts/utterances
+ *   utility (optional): a function that takes an act and a state and returns a number
+ *   alpha (optional): if set, controls the agent's softmax rationality;
+ *                     if unset, the agent maximizes expected utility
+ *   kinematics (optional): a function that specifies how the agent updates its credence
+ *                          in response to an input
+ *   inferMethod (optional): the Infer method to use when updating the agent's credence
+ * 
+ * @return {Object} An agent with the specified properties;
+ * @see choice and learn
+ *
+ * @example
+ * var speaker = Agent({
+ *    credence: { 'rain': 0.2, 'sun': 0.8 },
+ * `  options: ['A', 'B', 'C'],
+ *    utility: function(act, state) { return act == 'A' ? (state == 'rain' ? 1 : 0) : 0; }
+ * });
+ * viz(choice(speaker));
+ *
+ * @example
+ * var hearer = Agent({
+ *    credence: { 'rain': 0.2, 'sun': 0.8 },
+ *     kinematics: function(utterance) {
+ *        return function(state) {
+ *           return state == utterance;
+ *        };
+ *     }
+ * });
+ * viz(learn(hearer, 'rain'));
+ */
+var Agent = function(dict) {
+    var credence = isDistribution(dict.credence) ? dict.credence :
+        Categorical({vs: Object.keys(dict.credence), ps:Object.values(dict.credence)});
+    assert(isDistribution(credence),
+           "Agent credence must be a distribution");
+    assert(dict.alpha === undefined || dict.alpha >= 0,
+           "Agent alpha must be a non-negative number");
+    var utility = dict.utility;
+    var sanitizeUtility = function(option, state) {
+        var u = utility(option, state);
+        assert(_.isNumber(u) && !_.isNaN(u), "Utility must be a number, not "+u);
+        return u;
+        // note(u > 999999, "Replacing utility "+u+" with 999999");
+        // note(u < -999999, "Replacing utility "+u+" with -999999");
+        // return Math.max(Math.min(u, 999999), -999999);
+    };
+    return webpplRsa.mkAgent({
+        id: dict.agentId === undefined ? webpplRsa.getNewAgentId() : dict.agentId,
+        credence: credence,
+        utility: sanitizeUtility,
+        options: dict.options,
+        alpha: dict.alpha === undefined ? Infinity : dict.alpha,
+        kinematics: dict.kinematics,
+        inferMethod: dict.inferMethod || 'enumerate'
+    });
+};
+
+/**
+ * Updates an agent's credence by some input in accordance with their kinematics.
+ */
+var learn = function(agent, input) {
+    assert(agent.kinematics,
+           "Agent must have a kinematics function to learn");
+    var kinematics = agent.kinematics;
+    return update(agent.credence, kinematics(input), agent.inferMethod);
+};
+
+/**
+ * Prints the agent's response to each element in a list of inputs.
+ */
+var showKinematics = function(agent, inputs) {
+    map(function(input) {
+        display(input);
+        viz.table(learn(agent, input));
+    }, inputs);
+    return '';
+};
+
+/**
+ * Computes a distribution over options for an agent.
+ *
+ * @param {Agent} agent - the agent
+ * @return {Distribution} A distribution over the agent's options.
+ *    If the agent is an expected utility mazimizer, this is a
+ *    uniform distribution over all options that maximize EU
+ */
+var choice = function(agent) {
+    return agent.alpha == Infinity ? maxEU(agent) :
+        agent.alpha == 0 ? Indifferent(agent.options) :
+        softmaxEU(agent);
+};
+
+var softmaxEU = function(agent) {  
+    // return distribution over options
+    // NB: WebPPL allows functions as object properties,
+    // but they can't be called directly; x.f() doesn't work,
+    // you have to do var fn = x.f; fn().
+    var utilityFn = agent.utility;
+    return Infer(function() {
+        var stateSample = sample(agent.credence);
+        var optionSample = uniformDraw(agent.options);
+        var u = utilityFn(optionSample, stateSample);
+        factor(agent.alpha * u);
+        // return { 'act': optionSample };
+        return optionSample;
+    });
+};
+
+var maxEU = function(agent) {  
+    // return distribution over options
+    var euFn = expectedUtilityFn(agent);
+    var best = argmaxAll(euFn, agent.options);
+    assert(best.length > 0, "No best option found?!");
+    // var labeled_best = map(function(x) { return { 'act': x } }, best);
+    // return Indifferent(labeled_best);
+    return Indifferent(best);
+};
+
+var expectedUtilityFn = function(agent) {
+    // return expected utility function for agent
+    var utilityFn = agent.utility;
+    return function(option) {
+        // display(option);
+        // display(expectation(agent.credence, function(state) {
+        //     display(JSON.stringify(state));
+        //     display(utilityFn(option, state));
+        //     return utilityFn(option, state);
+        // }));
+        return expectation(agent.credence, function(state) {
+            return utilityFn(option, state);
+        });
+    };
+};
+
 var argmaxAll = function(fn, arr) {
     // return list of all arr elements that maximize fn
+    var arr_with_values = zip(arr, map(fn, arr));
+    // display(arr_with_values);
     var best_with_value = reduce(function(x,res){
         return x[1] > res[1] ? [[x[0]],x[1]] : x[1] == res[1] ? [res[0].concat([x[0]]),x[1]] : res;
-    }, [[],-Infinity], zip(arr, map(fn, arr)));
+    }, [[],-Infinity], arr_with_values);
     return best_with_value[0];
-}
+};
 
-var Credence = function(dict) {
-  // return Categorical distribution over keys in dict, with associated values as probabilities
-  return Categorical({vs: Object.keys(dict), ps:Object.values(dict)})
-}
+/**
+ * Prints the choice dispositions for a family of agents
+ */
+var showChoices = function(agentFn, args) {
+    map(function(arg) {
+        display(arg);
+        viz.table(choice(agentFn(arg)));
+    }, args);
+    return '';
+};
 
-var Agent = function(dict) {
-  var agentId = webpplRsa.getNewAgentId();
-  var credence = Categorical({vs: Object.keys(dict.credence), ps:Object.values(dict.credence)});
-  var options = webpplRsa.addAgentId(dict.options, agentId);
-  return {
-    id: agentId,
-    credence: credence,
-    utility: dict.utility,
-    options: options
-  }
-}
+/**
+ * Prints a decision matrix for an agent.
+ */
+var showDecisionMatrix = function(agent) {
+    var states = agent.credence.support();
+    var utilityFn = agent.utility;
+    var euFn = expectedUtilityFn(agent);
+    var rows = map(function(option) {
+        var utilities = map(function(state) {
+            return utilityFn(option, state);
+        }, states);
+        return [option].concat(utilities).concat([euFn(option)]);
+    }, agent.options);
+    var stateNames = map(function(s){return JSON.stringify(s);}, states);
+    var stateProbs = map(function(s){return Math.exp(agent.credence.score(s));}, states);
+    var header1 = [''].concat(stateNames).concat(['EU']);
+    var header2 = [''].concat(stateProbs).concat(['']);
+    display(webpplRsa.asciiTable([header1,header2].concat(rows)));
+};
 
-var Utterance = function(dict) {
-  return webpplRsa.addAgentId([dict.utterance], agentId);
-}
+var store = function(dict, obj) {
+    var type = keys(dict)[0];
+    webpplRsa.storeObject(type, dict[type], obj); 
+};
 
+var retrieve = function(dict) {
+    var type = keys(dict)[0];
+    return webpplRsa.getObject(type, dict[type]);
+};
+
+var retrieveAll = function(key) {
+    return webpplRsa.getAllObjects(key);
+};
+
+var showAll = function(fn, args) {
+    // fn returns either an agent or a distribution
+    map(function(x) {
+        display(x);
+        var val = fn(x);
+        viz.table(val.isAgent ? choice(val) : val);
+    }, args);
+    return '';
+};

@@ -1,26 +1,84 @@
-// Eexported functions can be accessed in rsa.wppl as webpplRsa.<functionName>
+// Exported functions can be accessed in rsa.wppl as webpplRsa.<functionName>
 
 var numAgents = 0;
 
-var getNewAgentId = function() {
-  numAgents++;
-  return numAgents;
+function getNewAgentId() {
+    numAgents++;
+    return numAgents;
 }
 
-var addAgentId = function(list, id) {
-  // adds agentId property to each element of list
-  return list.map(function(x) {
-    if (typeof x === 'string') {
-      // if x is a string, recreate as String object so that we can add custom
-      // properties:
-      x = new String(x);
+function createObjecr(key, value) {
+    let obj = {};
+    obj[key] = value;
+    return obj;
+}
+
+function assert(condition, message) {
+    if (!condition) {
+        throw new Error(message);
     }
-    x.agentId = id;
-    return x;
-  });
+}
+
+function asciiTable(data) {
+    const colWidths = data[0].map((_, colIndex) =>
+        Math.max(...data.map(row => String(row[colIndex]).length))
+    );
+    let table = '';
+    data.forEach(row => {
+        row.forEach((cell, colIndex) => {
+            table += `${String(cell).padEnd(colWidths[colIndex] + 2)} `;
+        });
+        table += '\n';
+    });
+    return table;
+}
+
+function namedFunction(name, fn) {
+    return {
+        toString: function() { return name },
+        toJSON: function() { return name },
+        fn: fn
+    }
+}
+
+let objectStore = {};
+function storeObject(objTypeName, name, obj) {
+    if (!objectStore[objTypeName]) {
+        objectStore[objTypeName] = {};
+    }
+    objectStore[objTypeName][name] = obj;
+}
+
+function getObject(objTypeName, name) {
+    if (!objectStore[objTypeName]) {
+        throw new Error('No objects of type ' + objTypeName + ' stored.');
+    }
+    if (!objectStore[objTypeName][name]) {
+        throw new Error('No object of type ' + objTypeName + ' with name ' + name + ' stored.');
+    }
+    return objectStore[objTypeName][name];
+}
+
+function getAllObjects(objTypeName) {
+    if (!objectStore[objTypeName]) {
+        throw new Error('No objects of type ' + objTypeName + ' stored.');
+    }
+    return objectStore[objTypeName];
+}
+
+function mkAgent(dict) {
+    dict.toString = dict.toJSON;
+    dict.isAgent = true;
+    return dict;
 }
 
 module.exports = {
-  getNewAgentId: getNewAgentId,
-  addAgentId: addAgentId
-}
+    assert: assert,
+    getNewAgentId: getNewAgentId,
+    asciiTable: asciiTable,
+    namedFunction: namedFunction,
+    storeObject: storeObject,
+    getObject: getObject,
+    getAllObjects: getAllObjects,
+    mkAgent: mkAgent
+};

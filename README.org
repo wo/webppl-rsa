@@ -1,5 +1,128 @@
-#+title: WebPPL RSA
+* WebPPL-RSA
 
-A few helper functions to model speakers and hearers in the RSA framework.
+This package contains a few helper functions to model speakers and hearers in
+the RSA framework.
 
-Test: `webppl test.wppl --require .`
+* Functions
+
+** Agent(dict) → {Agent}
+
+Defines a representation of an agent (a speaker or hearer).
+
+~dict~ is an associative array with the following keys:
+
+ - credence: a Distribution or a dictionary of states and their probabilities
+ - options (optional): a list of possible acts/utterances
+ - utility (optional): a function that takes an act and a state and returns a number
+ - alpha (optional): if set, controls the agent's softmax rationality;
+                     if unset, the agent maximizes expected utility
+ - kinematics (optional): a function that specifies how the agent updates its credence
+                          in response to an input
+ - inferMethod (optional): the Infer method to use when updating the agent's credence
+   
+see ~choice~ and ~learn~.
+
+Examples:
+
+#+BEGIN_SRC js
+var speaker = Agent({
+   credence: { 'rain': 0.2, 'sun': 0.8 },
+`  options: ['A', 'B', 'C'],
+   utility: function(act, state) { return act == 'A' ? (state == 'rain' ? 1 : 0) : 0; }
+});
+viz(choice(speaker));
+#+END_SRC
+
+#+BEGIN_SRC js
+var hearer = Agent({
+    credence: { 'rain': 0.2, 'sun': 0.8 },
+    kinematics: function(utterance) {
+        return function(state) {
+            return state == utterance;
+         };
+    }
+});
+viz(learn(hearer, 'rain'));
+#+END_SRC
+
+** choice(Agent) → {Distribution}
+
+Computes a distribution over the agent's options based on their credences and
+utilities.
+
+If the agent is an expected utility mazimizer, the distribution is a uniform distribution over all options that maximize EU.
+
+** Credence(dict) → {Distribution}
+
+Converts a dictionary into a Categorical distribution.
+
+~dict~ is an associative array {key1: prob1, key2: prob2, ...}.
+The returned distribution is a Categorical distribution over the keys in dict.
+
+** Cross(args) → {dict}
+
+Defines an algebra of states by combining the dimensions of its arguments.
+
+Examples:
+
+#+BEGIN_SRC js
+var weight = [{ weight: 1 }, { weight: 2 }, { weight: 3 }];
+var colour = [{ colour: 'red' }, { colour: 'green' }, { colour: 'blue' }];
+// Think of these as discrete random variables.
+var states = Cross(weight, colour);
+// [ { weight: 1, colour: 'red' }, { weight: 1, colour: 'green' }, ... ]
+#+END_SRC
+
+#+BEGIN_SRC js
+var states = Cross({ weight: [1,2,3], colour: ['red','green','blue'] });
+// [ { weight: 1, colour: 'red' }, { weight: 1, colour: 'green' }, ... ]
+#+END_SRC
+
+#+BEGIN_SRC js
+var states = Cross('sunny', 'cold');
+// [ { 'sunny': false, 'cold': false }, { 'sunny': false, 'cold': true }, ... ] 
+#+END_SRC
+
+** Indifferent(list) → {Distribution}
+
+Converts a list into a flat Categorical distribution over its elements.
+
+~list~ is an array of objects.
+The returned distribution is a Categorical distribution over the objects.
+
+** keys(dict) → {list}
+
+Returns the keys of a dictionary as a list.
+
+** learn(Agent, input) → {Distribution}
+
+Updates an agent's credence by some input in accordance with their kinematics
+function. Returns the posterior distribution.
+
+** numWords(string) → {number}
+
+Returns the number of words in a string.
+
+** partition(list, function) → {list}
+
+Partitions an array into an array of arrays based on the return value of a
+function.
+
+** showKinematics(Agent, list) → {}
+
+Prints the agent's doxastic response to each element in the given list.
+
+** showChoices(function, list) → {}
+
+Prints the choice dispositions for a family of agents.
+
+** showDecisionMatrix(Agent) → {}
+
+Prints the agent's decision matrix.
+
+** update(Distribution, event, string) → {Distribution}
+
+Conditionalizes a distribution on an event. The event can be either a state, an
+array of states, or a function state → bool. The final parameter is the method
+passed to the WebPPL 'infer' function; defaults to 'enumerate'.
+
