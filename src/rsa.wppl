@@ -27,6 +27,17 @@ var keys = function(dict) {
     return _.keys(dict);
 };
 
+/**
+ * Applies a function to an argument and returns the result.
+ */
+var evaluate = function(fn, arg) {
+    // The reason for having this pointless function is that if we have
+    //    var x = { y: function(z) { return z+1 } }
+    // then webppl doesn't allow calling x.y with
+    //     x['y'](7)
+    assert(_.isFunction(fn), 'evaluate: first argument must be a function, not '+fn);
+    return fn(arg);
+};
 
 /**
  * Defines an algebra of states by combining the dimensions of its arguments.
