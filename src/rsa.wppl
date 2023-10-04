@@ -114,7 +114,7 @@ var CrossExpandStrings = function(args) {
 /**
  * Partitions an array into an array of arrays by the return value of fn.
  */
-var partition = function(arr, fn) {
+var Partition = function(arr, fn) {
     var sameCell = function(x,y) { return fn(x) == fn(y); };
     return groupBy(sameCell, arr);
 };

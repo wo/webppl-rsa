@@ -107,7 +107,7 @@ function. Returns the posterior distribution.
 
 Returns the number of words in a string.
 
-** partition(list, function) → {list}
+** Partition(list, function) → {list}
 
 Partitions an array into an array of arrays based on the return value of a
 function.
