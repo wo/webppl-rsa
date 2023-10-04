@@ -128,7 +128,7 @@ var Question2 = function(name, fn) {
     return name;
 };
 
-var cell = function(states, question, state) {
+var cell1 = function(states, question, state) {
     // return array of states for which question returns the same value as for state
     var fn = webpplRsa.getObject('question', question);
     return filter(function(s) { return _.isEqual(fn(s), fn(state)) }, states);
@@ -275,7 +275,7 @@ var learn = function(agent, input) {
  */
 var showKinematics = function(agent, inputs) {
     map(function(input) {
-        display(input);
+        display('update for "'+input+'":');
         viz.table(learn(agent, input));
     }, inputs);
     return '';
@@ -350,10 +350,12 @@ var argmaxAll = function(fn, arr) {
 /**
  * Prints the choice dispositions for a family of agents
  */
-var showChoices = function(agentFn, args) {
+    
+var showChoices = function(agentFn, args, extraArg) {
     map(function(arg) {
-        display(arg);
-        viz.table(choice(agentFn(arg)));
+        display('choices for '+JSON.stringify(arg)+':');
+        var agent = agentFn(arg, extraArg); // optionally pass further arguments
+        viz.table(choice(agent));
     }, args);
     return '';
 };
