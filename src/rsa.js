@@ -7,7 +7,7 @@ function getNewAgentId() {
     return numAgents;
 }
 
-function createObjecr(key, value) {
+function createObject(key, value) {
     let obj = {};
     obj[key] = value;
     return obj;
@@ -74,6 +74,7 @@ function mkAgent(dict) {
 
 module.exports = {
     assert: assert,
+    createObject: createObject,
     getNewAgentId: getNewAgentId,
     asciiTable: asciiTable,
     namedFunction: namedFunction,
