@@ -79,6 +79,19 @@ function mkAgent(dict) {
     return dict;
 }
 
+var applyFunction = function(fn, arr) {
+    switch(arr.length) {
+        case 1:
+            return function() { fn(arr[0]); };
+        case 2:
+            return function() { fn(arr[0], arr[1]); };
+        case 3:
+            return function() { fn(arr[0], arr[1], arr[2]); };
+        default:
+            throw new Error("Too many parameters for applyFunction");
+    }
+};
+
 module.exports = {
     assert: assert,
     createObject: createObject,
@@ -88,5 +101,6 @@ module.exports = {
     storeObject: storeObject,
     getObject: getObject,
     getAllObjects: getAllObjects,
-    mkAgent: mkAgent
+    mkAgent: mkAgent,
+    applyFunction: applyFunction
 };

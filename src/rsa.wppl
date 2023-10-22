@@ -395,15 +395,66 @@ var argmaxAll = function(fn, arr) {
 
 /**
  * Prints the choice dispositions for a family of agents
+ * 
  */
-    
-var showChoices = function(agentFn, args, extraArg) {
-    map(function(arg) {
-        display('choices for '+JSON.stringify(arg)+':');
-        var agent = agentFn(arg, extraArg); // optionally pass further arguments
-        viz.table(choice(agent));
-    }, args);
+var showChoices = function() {
+    var args = _.toArray(arguments);
+    assert(args.length < 4, "Too many arguments to showChoices");
+    return args.length == 1 ? showChoices1(args[0]) :
+        args.length == 2 ? showChoices2(args[0], args[1]) :
+        showChoices3(args[0], args[1], args[2]);
+};
+
+var showChoices1 = function(agent) {
+    viz.table(choice(agent));
+};
+
+var showChoices2 = function(agentFn, params) {
+    map(function(param) {
+        display('choices for '+JSON.stringify(param)+':');
+        showChoices1(agentFn(param));
+    }, params);
     return '';
+};
+
+var showChoices3 = function(agentFn, params1, params2) {
+    map(function(param1) {
+        map(function(param2) {
+            display('choice for '+JSON.stringify(param1)+' and '+JSON.stringify(param2)+':');
+            showChoices1(agentFn(param1, param2));
+        }, params2);
+    }, params1);
+    return '';
+};
+
+var applyFunction = function(fn, args) {
+    var curriedFn = curry(fn, args.length);
+    return reduce(function(nextReverse, sofar) {
+        return sofar(nextReverse);
+    }, curriedFn, args.reverse());
+};
+
+var curry = function(fn, arity) {
+    assert(arity == 1 || arity == 2 || arity == 3, "Can't curry a function of arity "+arity);
+    return arity == 1 ? fn : arity == 2 ? curry2(fn) : curry3(fn);
+};
+
+var curry2 = function(fn) {
+    return function(x) {
+        return function(y) {
+            return fn(x,y);
+        };
+    };
+};
+
+var curry3 = function(fn) {
+    return function(x) {
+        return function(y) {
+            return function(z) {
+                return fn(x,y,z);
+            };
+        };
+    };
 };
 
 /**
