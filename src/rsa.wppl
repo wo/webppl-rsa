@@ -4,6 +4,11 @@ var isDistribution = function(x) {
     return x.sample ? true : false;
 };
 
+var ensureDistribution = function(dist) {
+    return isDistribution(dist) ? dist :
+        Categorical({vs: Object.keys(dist), ps:Object.values(dist)});
+};
+
 var assert = function(condition, message) {
     webpplRsa.assert(condition, message);
 };
@@ -173,6 +178,48 @@ var Random = function(list) {
 };
 
 /**
+ * Returns the joint distribution of two or more distributions.
+ *
+ * @param {Array} dict - A dictionary name => distribution.
+ * @return {Distribution} A joint distribution
+ */
+var join = function(dict) {
+    var names = _.keys(dict);
+    var dists = map(function(k) { ensureDistribution(dict[k]); }, names);
+    return Infer(function() {
+        var joint_sample = map(function(d) { return sample(d); }, dists);
+        return webpplRsa.createObject(names, joint_sample);
+    });
+};
+
+/**
+ * Returns the quadratic accuracy of a distribution in a state.
+ *
+ * @param {Distribution} dist - A discrete distribution.
+ * @param {Object} state - A "state" or "world" in the distribution.
+ * @return {Number} The quadratic accuracy of the distribution.
+ */
+
+var quad_accuracy = function(dist, state) {
+   return -1*sum(map(function(states) {
+       var prop = function(s) { return states.indexOf(s) != -1; };
+       return Math.pow(prop(state) - pr(dist, prop), 2);
+   }, powerset(dist.support())));
+};
+
+var powerset = function(xs) {
+    return reduce(function(x, ps) {
+        return ps.concat(map(function(p) { return [x].concat(p); }, ps));
+    }, [[]], xs);
+};
+
+var pr = function(dist, proposition) {
+    return sum(map(function(s){
+        return Math.exp(dist.score(s));
+    }, filter(proposition, states)));
+};
+
+/**
  * Conditionalizes a distribution on an event.
  *
  * @param {Distribution} distribution - A distribution.
@@ -234,8 +281,7 @@ var update = function(distribution, event, inferMethod) {
  * viz(learn(hearer, 'rain'));
  */
 var Agent = function(dict) {
-    var credence = isDistribution(dict.credence) ? dict.credence :
-        Categorical({vs: Object.keys(dict.credence), ps:Object.values(dict.credence)});
+    var credence = ensureDistribution(dict.credence);
     assert(isDistribution(credence),
            "Agent credence must be a distribution");
     assert(dict.alpha === undefined || dict.alpha >= 0,
