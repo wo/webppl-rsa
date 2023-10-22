@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>WebPPL-RSA Viewer</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script id="webpplscript" src="webpplview/webppl/bundle/webppl.js"></script>
+        <script src="webpplview/webppl-editor.min.js"></script>
+        <script src="webpplview/webppl-viz.min.js"></script>
+        <script src="webpplview/mathjax/tex-chtml.js"></script>
+        <link rel="stylesheet" href="webpplview/webppl-editor.css">
+        <link rel="stylesheet" href="webpplview/webppl-viz.css">
+        <link rel="stylesheet" type="text/css" href="webpplview/neat.css">
+        <script>
+        function updateSourceJs() {
+            const statusEl = document.getElementById('reloadStatus');
+            statusEl.innerText = 'recreating webppl.js...';
+            fetch('/update-source-js')
+                .then(response => {
+                    if (response.ok) {
+                        statusEl.innerText = 'done. reloading page...';
+                        reload_page_but_preserve_code();
+                    } else {
+                        statusEl.innerText = 'Error: '+response.statusText;
+                    }
+                })
+                .catch(error => {
+                    statusEl.innerText = 'Error: '+response.statusText;
+                });
+        }
+        function updateBundle() {
+            const statusEl = document.getElementById('reloadStatus');
+            statusEl.innerText = 'updating bundle...';
+            fetch('/update-bundle')
+                .then(response => {
+                    if (response.ok) {
+                        statusEl.innerText = '';
+                    } else {
+                        statusEl.innerText = 'Error: '+response.statusText;
+                    }
+                })
+                .catch(error => {
+                    statusEl.innerText = 'Error: '+response.statusText;
+                });
+        }
+        function reload_page_but_preserve_code() {
+            // I tried reloading just the script, but for reasons I don't
+            // understand this doesn't work.
+            var code = document.querySelector('.ReactCodeMirror').innerText;
+            code = code.replace(/\u200B/g, ''); // CodeMirror inserts zero-width space characters that mess things up
+            var form = document.createElement('form');
+            form.setAttribute('action', '/');
+            form.setAttribute('method', 'post');
+            form.setAttribute('style', 'display:none');
+            var textarea = document.createElement('textarea');
+            textarea.setAttribute('name', 'codeArea');
+            textarea.textContent = code;
+            form.appendChild(textarea);
+            document.body.appendChild(form);
+            form.submit();
+        }
+        </script>
+        <style>
+            .CodeMirror { min-height:200px!important; }
+        </style>
+    </head>
+    <body>
+        <h1><a href="/" style="text-decoration:none">WebPPL-RSA</a></h1>
+        <button onclick="updateSourceJs()">Update WebPPL Source</button>
+        <button onclick="updateBundle()">Update Bundle</button>
+        <span id="reloadStatus"></span>
+        
+        <div id="content" style="margin-top:2em">
+            <div id="src0" class="sourceblock runnable"><pre>
+
+var states = ['rain', 'snow'];
+var meanings = {
+   'R': function(s){ return s == 'rain'; },
+   'S': function(s){ return s == 'snow'; }
+};
+var is_true = function(u,s){
+   return u(s);
+};
+
+var s0 = Agent({
+   credence: { 'rain': 1, 'snow': 0 },
+   options: ['R','S','P'],
+   utility: function(u,s){
+      // return truth_conditions[u].includes(s) ? 1 : 0;
+      return Infinity;
+   }
+});
+
+viz.table(choice(s0))
+
+var h0 = Agent({
+  credence: { 'rain': 0.5, 'snow': 0.5}
+})
+            </pre></div>
+        </div>
+    <script>
+     // set up editor:
+     window.addEventListener('load', function() {
+         var el = document.querySelector('pre');
+         editor.setup(el, {language: 'webppl'});
+     });
+     function extendCode(code, srcdiv) {
+         return code
+     }
+    </script>
+
+    <div id="errorDiv" style="font-family:monospace"></div>
+      
+    <script>
+
+        const script = 'webpplview/webppl/bundle/webppl.js';
+     
+        setInterval(function() {
+            var errorLink = document.querySelector('.error');
+            if (errorLink && !errorLink.handlerAdded) {
+                errorLink.addEventListener('click', function() {
+                    setTimeout(showError, 100);
+                });
+                errorLink.handlerAdded = true;
+            }
+        }, 1000);
+
+        function showError() {
+            var errorMsg = document.querySelector('.result').innerText;
+            var errorLineNumbers = errorMsg.match(/(?<=webppl.js:)\d+/g).map((x) => parseInt(x)).sort()
+            fetch(script)
+                .then(response => response.text())
+                .then(fileContents => {
+                    const lines = fileContents.split('\n');
+                    let formattedContent = '';
+                    errorLineNumbers.forEach((lineNumber) => {
+                        for (let i=lineNumber-10; i<lineNumber+5; i++) {
+                            if (lineNumber == i+1) {
+                                formattedContent += `<div style="background-color:yellow">${i+1}. ${lines[i]}</div>`;
+                            } else {
+                                formattedContent += `<div>${i+1}. ${lines[i]}</div>`;
+                            }
+                        }
+                        formattedContent += '<div>...</div>';
+                    });
+                    // var inRsaCode = false;
+                    // for (let i=0; i<lines.length; i++) {
+                    //     if (lines[i].indexOf('webppl-rsa start') > -1) {
+                    //         inRsaCode = true;
+                    //     }
+                    //     if (inRsaCode) {
+                    //         formattedContent += `<div>${i}. ${lines[i]}</div>`;
+                    //     }
+                    // }   
+                    document.getElementById('errorDiv').innerHTML = formattedContent;
+            })
+            .catch(error => {
+                console.error('Error loading file:', error);
+                document.getElementById('errorDiv').innerHTML = 'Error loading file.';
+            });
+        }
+    </script>
+  </body>
+</html>

@@ -133,6 +133,11 @@ var Question2 = function(name, fn) {
     return name;
 };
 
+var cell = function(questionFn, state, states) {
+    // return array of states for which questionFn returns the same value as for state
+    return filter(function(s) { return _.isEqual(questionFn(s), questionFn(state)); }, states); 
+};
+
 var cell1 = function(states, question, state) {
     // return array of states for which question returns the same value as for state
     var fn = webpplRsa.getObject('question', question);

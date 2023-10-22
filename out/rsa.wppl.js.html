@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: rsa.wppl.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: rsa.wppl.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>'use strict';
+
+var isDistribution = function(x) {
+    return x.sample ? true : false;
+};
+
+/**
+ * Converts a dictionary into a Categorical distribution.
+ * 
+ * @param {Array} dict - An associative array {key1: prob1, key2: prob2, ...}
+ * @return {Distribution} A Categorical distribution over the keys in dict.
+ */
+var Credence = function(dict) {
+    return Categorical({vs: Object.keys(dict), ps:Object.values(dict)});
+};
+
+/**
+ * Converts a list into a flat Categorical distribution over its elements.
+ * 
+ * @param {Array} list - A list of objects.
+ * @return {Distribution} A Categorical distribution over the elements of list.
+ */
+var Indifferent = function(list) {
+    return Categorical({vs: list, ps: map(function(){ 1 }, list)});
+};
+
+/**
+ * Defines a representation of an agent (typically, a speaker).
+ * 
+ * @param {Array} dict - An associative array with keys credence, options, utility, alpha.
+ *   credence is either a Distribution or a dictionary of states and their probabilities.
+ *   options is a list of possible acts/utterances.
+ *   utility is a function that takes an act and a state and returns a number.
+ *   alpha is a number that, if set, controls the agent's softmax rationality;
+ *         if unset, the agent maximizes expected utility.
+ * @return {Object} An agent with the specified properties;
+ * @see choice
+ *
+ * @example
+ * var speaker = Agent({
+ *    credence: { 'rain': 0.2, 'sun': 0.8 },
+ * `  options: ['A', 'B', 'C'],
+ *    utility: function(act, state) { return act == 'A' ? (state == 'rain' ? 1 : 0) : 0; }
+ * });
+ */
+var Agent = function(dict) {
+    var agentId = webpplRsa.getNewAgentId();
+    var options = dict.options;
+    var credence = isDistribution(dict.credence) ? dict.credence :
+        Categorical({vs: Object.keys(dict.credence), ps:Object.values(dict.credence)});
+    // var options = dict.options ? webpplRsa.addAgentId(dict.options, agentId) : [];
+    var utility = dict.utility || function() { return 0; };
+    var alpha = dict.alpha || Infinity;
+    return {
+        id: agentId,
+        credence: credence,
+        utility: utility,
+        options: options,
+        alpha: alpha,
+    };
+    // We could abbreviate this to return {credence, options, utility, ...}
+};
+
+/**
+ * Computes a distribution over acts/utterances for an agent.
+ *
+ * @param {Agent} agent - the agent
+ * @return {Distribution} A distribution over the agent's options. If the agent
+ *    is an expected utility mazimizer, the distribution is a uniform
+ *    distribution over all options that maximize EU
+ */
+var choice = function(agent) {
+    // return distribution over options
+    return agent.alpha == Infinity ? maxEU(agent) : softmaxEU(agent);
+};
+  
+var softmaxEU = function(agent) {  
+    // return distribution over options
+    // NB: WebPPL allows functions as object properties,
+    // but they can't be called directly; x.f() doesn't work,
+    // you have to do var fn = x.f; fn().
+    var utilityFn = agent.utility;
+    return Infer(function() {
+        var stateSample = sample(agent.credence);
+        var optionSample = uniformDraw(agent.options);
+        var u = utilityFn(optionSample, stateSample);
+        factor(agent.alpha * u);
+        return { 'act': optionSample };
+    });
+};
+
+var maxEU = function(agent) {  
+    // return distribution over options
+    var utilityFn = agent.utility;
+    var euFn = expectedUtilityFn(agent);
+    var best = argmaxAll(euFn, agent.options);
+    var labeled_best = map(function(x) { return { 'act': x } }, best);
+    return Indifferent(labeled_best);
+};
+
+var expectedUtilityFn = function(agent) {
+    // return expected utility function for agent
+    return function(option) {
+        var utilityFn = agent.utility;
+        return expectation(agent.credence, function(state) {
+            return utilityFn(option, state);
+        });
+    };
+};
+
+var argmaxAll = function(fn, arr) {
+    // return list of all arr elements that maximize fn
+    var best_with_value = reduce(function(x,res){
+        return x[1] > res[1] ? [[x[0]],x[1]] : x[1] == res[1] ? [res[0].concat([x[0]]),x[1]] : res;
+    }, [[],-Infinity], zip(arr, map(fn, arr)));
+    return best_with_value[0];
+};
+
+
+var learn = function(agent, event) {
+    // update agent's credence distribution based on event.
+    // event is a dict { utterance: speaker }
+    var utterance = _.keys(event)[0];
+    var speaker = _.values(event)[0];
+    return Infer(function() {
+        var stateSample = sample(agent.credence);
+        var hypotheticalSpeaker = clone(speaker, { credence: stateSample });
+        var utteranceSample = sample(move(hypotheticalSpeaker));
+        condition(utteranceSample == utterance);
+        return stateSample;
+    });
+};
+
+var Utterance = function(dict) {
+    return webpplRsa.addAgentId([dict.utterance], agentId);
+};
+
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#Agent">Agent</a></li><li><a href="global.html#Credence">Credence</a></li><li><a href="global.html#Indifferent">Indifferent</a></li><li><a href="global.html#choice">choice</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Sep 08 2023 16:36:55 GMT+0100 (British Summer Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
