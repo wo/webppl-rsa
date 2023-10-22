@@ -133,8 +133,15 @@ var Question2 = function(name, fn) {
     return name;
 };
 
+/**
+ * Returns all states that give the same answer to a question than a given state.
+ *
+ * @param {function} questionFn - A function that takes a state and returns an answer.
+ * @param {Object} state - A state.
+ * @param {Array} states - An array of states.
+ * @return {Array} An array of states.
+ */
 var cell = function(questionFn, state, states) {
-    // return array of states for which questionFn returns the same value as for state
     return filter(function(s) { return _.isEqual(questionFn(s), questionFn(state)); }, states); 
 };
 

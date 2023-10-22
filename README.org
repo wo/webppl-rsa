@@ -45,6 +45,11 @@ var hearer = Agent({
 viz(learn(hearer, 'rain'));
 #+END_SRC
 
+** cell(Function, Object, Array) → {Array}
+
+Returns all states that give the same answer to a question (represented by the
+function argument) than a given state.
+
 ** choice(Agent) → {Distribution}
 
 Computes a distribution over the agent's options based on their credences and
@@ -93,6 +98,15 @@ Converts a list into a flat Categorical distribution over its elements.
 
 ~list~ is an array of objects.
 The returned distribution is a Categorical distribution over the objects.
+
+** join(dict) → {Distribution}
+
+Returns the joint distribution of several distributions, treated as independent.
+
+Example:
+
+#+BEGIN_SRC js
+
 
 ** keys(dict) → {list}
 
