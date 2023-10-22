@@ -9,7 +9,14 @@ function getNewAgentId() {
 
 function createObject(key, value) {
     let obj = {};
-    obj[key] = value;
+    if (_.isArray(key)) {
+        for (let i = 0; i < key.length; i++) {
+            obj[key[i]] = value[i];
+        }
+    }
+    else {
+        obj[key] = value;
+    }
     return obj;
 }
 
