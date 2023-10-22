@@ -249,7 +249,7 @@ var update = function(distribution, event, inferMethod) {
     };
     return inferMethod ? Infer({ method: inferMethod, model:model }) : Infer(model);
 };
-
+    
 /**
  * Defines a representation of an agent (e.g., a speaker or hearer).
  * 
@@ -314,17 +314,19 @@ var Agent = function(dict) {
 /**
  * Updates an agent's credence by some input in accordance with their kinematics.
  */
-var learn = function(agent, input) {
+var learn = cache(function(agent, input) {
     assert(agent.kinematics,
            "Agent must have a kinematics function to learn");
     var kinematics = agent.kinematics;
     return update(agent.credence, kinematics(input), agent.inferMethod);
-};
+});
 
 /**
  * Prints the agent's response to each element in a list of inputs.
  */
 var showKinematics = function(agent, inputs) {
+    assert(inputs.length > 0,
+           "Must provide at least one input for kinematics");
     map(function(input) {
         display('update for "'+input+'":');
         viz.table(learn(agent, input));
@@ -341,6 +343,8 @@ var showKinematics = function(agent, inputs) {
  *    uniform distribution over all options that maximize EU
  */
 var choice = function(agent) {
+    assert(agent.options,
+           "Agent must have options to choose from");
     return agent.alpha == Infinity ? maxEU(agent) :
         agent.alpha == 0 ? Indifferent(agent.options) :
         softmaxEU(agent);
