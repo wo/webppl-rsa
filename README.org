@@ -5,20 +5,20 @@ the RSA framework.
 
 * Functions
 
-** Agent(dict) → {Agent}
+** Agent(params:dict) → {Agent}
 
 Defines a representation of an agent (a speaker or hearer).
 
-~dict~ is an associative array with the following keys:
+~params~ is an associative array with the following keys:
 
- - credence: a Distribution or a dictionary of states and their probabilities
- - options (optional): a list of possible acts/utterances
- - utility (optional): a function that takes an act and a state and returns a number
- - alpha (optional): if set, controls the agent's softmax rationality;
+ - ~credence~: a Distribution or a dictionary of states and their probabilities
+ - ~options~ (optional): a list of possible acts/utterances
+ - ~utility~ (optional): a function that takes an act and a state and returns a number
+ - ~alpha~ (optional): if set, controls the agent's softmax rationality;
                      if unset, the agent maximizes expected utility
- - kinematics (optional): a function that specifies how the agent updates its credence
+ - ~kinematics~ (optional): a function that specifies how the agent updates its credence
                           in response to an input
- - inferMethod (optional): the Infer method to use when updating the agent's credence
+ - ~inferMethod~ (optional): the Infer method to use when updating the agent's credence
    
 see ~choice~ and ~learn~.
 
@@ -45,12 +45,20 @@ var hearer = Agent({
 viz(learn(hearer, 'rain'));
 #+END_SRC
 
-** cell(Function, Object, Array) → {Array}
+** bestOption(agent:Agent, threshold:Number, alpha:Number) → {Object}  
 
-Returns all states that give the same answer to a question (represented by the
-function argument) than a given state.
+Returns the uniquely best option for an agent if there is one, else ~false~.
 
-** choice(Agent) → {Distribution}
+This function computes a softmax distribution over the agent's options and
+checks if the best option is at least ~threshold~ more likely than the second
+best. By default, ~threshold~ is 0.1 and ~alpha~ is 1.
+ 
+** cell(question:Function, state:Object, states:Array) → {Array}
+
+Returns all elements of ~states~ for which the output of ~question~ is equal to
+~state~.
+
+** choice(agent:Agent) → {Distribution}
 
 Computes a distribution over the agent's options based on their credences and
 utilities.
@@ -64,7 +72,7 @@ Converts a dictionary into a Categorical distribution.
 ~dict~ is an associative array {key1: prob1, key2: prob2, ...}.
 The returned distribution is a Categorical distribution over the keys in dict.
 
-** Cross(args) → {dict}
+** Cross(args:Array|dict) → {dict}
 
 Defines an algebra of states by combining the dimensions of its arguments.
 
@@ -88,16 +96,13 @@ var states = Cross('sunny', 'cold');
 // [ { 'sunny': false, 'cold': false }, { 'sunny': false, 'cold': true }, ... ] 
 #+END_SRC
 
-** evaluate(function, argument) → {Object}
+** evaluate(function:Function, arg:Object) → {Object}
 
 Applies the function to the argument and returns the result. 
 
 ** Indifferent(list) → {Distribution}
 
 Converts a list into a flat Categorical distribution over its elements.
-
-~list~ is an array of objects.
-The returned distribution is a Categorical distribution over the objects.
 
 ** join(dict) → {Distribution}
 
@@ -115,7 +120,7 @@ var d = join({ 'weather': d1, 'temperature': d2 });
 
 Returns the keys of a dictionary as a list.
 
-** learn(Agent, input) → {Distribution}
+** learn(agent:Agent, input:Object) → {Distribution}
 
 Updates an agent's credence by some input in accordance with their kinematics
 function. Returns the posterior distribution.
@@ -124,24 +129,28 @@ function. Returns the posterior distribution.
 
 Returns the number of words in a string.
 
-** Partition(list, function) → {list}
+** Partition(list:Array, function:Function) → {list}
 
 Partitions an array into an array of arrays based on the return value of a
 function.
 
-** showKinematics(Agent, list) → {}
+** showKinematics(agent:Agent, inputs:Array) → {}
 
 Prints the agent's doxastic response to each element in the given list.
 
-** showChoices(function, list) → {}
+** showChoices(agentFn:Function, params1:Array, params2:Array) → {}
 
 Prints the choice dispositions for a family of agents.
+
+** showBestOption(agentFn:Function, params1:Array, params2:Array) → {}
+
+Prints the best option for a family of agents.
 
 ** showDecisionMatrix(Agent) → {}
 
 Prints the agent's decision matrix.
 
-** update(Distribution, event, string) → {Distribution}
+** update(dist:Distribution, event:Object|Array|Function, method:String) → {Distribution}
 
 Conditionalizes a distribution on an event. The event can be either a state, an
 array of states, or a function state → bool. The final parameter is the method
