@@ -357,19 +357,36 @@ var choice = function(agent) {
         softmaxEU(agent);
 };
 
-var softmaxEU = function(agent) {  
+/**
+ * Returns the uniquely best option for an agent if there is one, else false.
+ *
+ * @param {Agent} agent - The agent.
+ * @param {Number} threshold - The minimum probability for an option to be considered best.
+ * @param {Number} alpha - The alpha parameter for the softmax distribution.
+ * @return {String|Boolean} The best option or false if there is none.
+ */
+var bestOption = function(agent, alpha, threshold) {
+    assert(agent.options,
+           "Agent must have options to choose from");
+    var default_alpha = 1;
+    var default_threshold = 0.1; // best option at least this much more likely than next best
+    var thr = threshold || default_threshold;
+    var smDist = softmaxEU(agent, alpha || default_alpha);
+    // viz.table(smDist);
+    var support = smDist.support();
+    var zipped = zip(support, map(function(x){return Math.exp(smDist.score(x))}, support))
+    var sorted = sortOn(zipped, function(z) { return -z[1] });
+    return (sorted.length == 1 || sorted[0][1] > sorted[1][1] + thr) ? sorted[0][0] : false;
+};
+
+var softmaxEU = function(agent, alpha) {  
     // return distribution over options
-    // NB: WebPPL allows functions as object properties,
-    // but they can't be called directly; x.f() doesn't work,
-    // you have to do var fn = x.f; fn().
-    var utilityFn = agent.utility;
+    var euFn = expectedUtilityFn(agent);
     return Infer(function() {
-        var stateSample = sample(agent.credence);
-        var optionSample = uniformDraw(agent.options);
-        var u = utilityFn(optionSample, stateSample);
-        factor(agent.alpha * u);
-        // return { 'act': optionSample };
-        return optionSample;
+        var act = uniformDraw(agent.options);
+        var eu = euFn(act);
+        factor((alpha || agent.alpha) * eu);
+        return act;
     });
 };
 
@@ -402,7 +419,6 @@ var expectedUtilityFn = function(agent) {
 var argmaxAll = function(fn, arr) {
     // return list of all arr elements that maximize fn
     var arr_with_values = zip(arr, map(fn, arr));
-    // display(arr_with_values);
     var best_with_value = reduce(function(x,res){
         return x[1] > res[1] ? [[x[0]],x[1]] : x[1] == res[1] ? [res[0].concat([x[0]]),x[1]] : res;
     }, [[],-Infinity], arr_with_values);
@@ -411,36 +427,37 @@ var argmaxAll = function(fn, arr) {
 
 /**
  * Prints the choice dispositions for a family of agents
- * 
  */
-var showChoices = function() {
-    var args = _.toArray(arguments);
-    assert(args.length < 4, "Too many arguments to showChoices");
-    return args.length == 1 ? showChoices1(args[0]) :
-        args.length == 2 ? showChoices2(args[0], args[1]) :
-        showChoices3(args[0], args[1], args[2]);
+var showChoices = function(agent, params1, params2) {
+    return params2 ?
+        map(function(param1) {
+            map(function(param2) {
+                display('choice for '+JSON.stringify(param1)+' and '+JSON.stringify(param2)+':');
+                showChoices(agent(param1, param2));
+            }, params2);
+        }, params1) && ''
+        : params1 ?
+        map(function(param1) {
+            display('choice for '+JSON.stringify(param1)+':');
+            showChoices(agent(param1));
+        }, params1) && ''
+        : viz.table(choice(agent));
 };
 
-var showChoices1 = function(agent) {
-    viz.table(choice(agent));
-};
-
-var showChoices2 = function(agentFn, params) {
-    map(function(param) {
-        display('choices for '+JSON.stringify(param)+':');
-        showChoices1(agentFn(param));
-    }, params);
-    return '';
-};
-
-var showChoices3 = function(agentFn, params1, params2) {
-    map(function(param1) {
-        map(function(param2) {
-            display('choice for '+JSON.stringify(param1)+' and '+JSON.stringify(param2)+':');
-            showChoices1(agentFn(param1, param2));
-        }, params2);
-    }, params1);
-    return '';
+var showBestOption = function(agent, params1, params2) {
+    return params2 ?
+        map(function(param1) {
+            map(function(param2) {
+                display('best option for '+JSON.stringify(param1)+' and '+JSON.stringify(param2)+':');
+                showBestOption(agent(param1, param2));
+            }, params2);
+        }, params1) && ''
+        : params1 ?
+        map(function(param1) {
+            display('best option for '+JSON.stringify(param1)+':');
+            showBestOption(agent(param1));
+        }, params1) && ''
+        : print(bestOption(agent));
 };
 
 var applyFunction = function(fn, args) {

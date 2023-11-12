@@ -88,8 +88,8 @@ var s0 = Agent({
    credence: { 'rain': 1, 'snow': 0 },
    options: ['R','S','P'],
    utility: function(u,s){
-      // return truth_conditions[u].includes(s) ? 1 : 0;
-      return Infinity;
+      return evaluate(meanings[u], s) ? 1 : 0;
+      // return Infinity;
    }
 });
 

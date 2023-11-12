@@ -106,7 +106,10 @@ Returns the joint distribution of several distributions, treated as independent.
 Example:
 
 #+BEGIN_SRC js
-
+var d1 = Credence({ 'rain': 0.2, 'sun': 0.8 });
+var d2 = Credence({ 'cold': 0.3, 'warm': 0.7 });
+var d = join({ 'weather': d1, 'temperature': d2 });
+#+END_SRC
 
 ** keys(dict) → {list}
 
