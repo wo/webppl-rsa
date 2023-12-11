@@ -51,7 +51,7 @@ Returns the uniquely best option for an agent if there is one, else ~false~.
 
 This function computes a softmax distribution over the agent's options and
 checks if the best option is at least ~threshold~ more likely than the second
-best. By default, ~threshold~ is 0.1 and ~alpha~ is 1.
+best.
  
 ** cell(question:Function, state:Object, states:Array) → {Array}
 

@@ -310,7 +310,7 @@ var Agent = function(dict) {
     return webpplRsa.mkAgent({
         id: dict.agentId === undefined ? webpplRsa.getNewAgentId() : dict.agentId,
         credence: credence,
-        utility: sanitizeUtility,
+        utility: dp.cache(utility),
         options: dict.options,
         alpha: dict.alpha === undefined ? Infinity : dict.alpha,
         kinematics: dict.kinematics,
@@ -332,7 +332,7 @@ var learn = cache(function(agent, input) {
  * Prints the agent's response to each element in a list of inputs.
  */
 var showKinematics = function(agent, inputs) {
-    assert(inputs.length > 0,
+    assert(inputs && inputs.length > 0,
            "Must provide at least one input for kinematics");
     map(function(input) {
         display('update for "'+input+'":');
@@ -365,10 +365,10 @@ var choice = function(agent) {
  * @param {Number} alpha - The alpha parameter for the softmax distribution.
  * @return {String|Boolean} The best option or false if there is none.
  */
-var bestOption = function(agent, alpha, threshold) {
+var bestOption = dp.cache(function(agent, alpha, threshold) {
     assert(agent.options,
            "Agent must have options to choose from");
-    var default_alpha = 1;
+    var default_alpha = 2;
     var default_threshold = 0.1; // best option at least this much more likely than next best
     var thr = threshold || default_threshold;
     var smDist = softmaxEU(agent, alpha || default_alpha);
@@ -377,7 +377,7 @@ var bestOption = function(agent, alpha, threshold) {
     var zipped = zip(support, map(function(x){return Math.exp(smDist.score(x))}, support))
     var sorted = sortOn(zipped, function(z) { return -z[1] });
     return (sorted.length == 1 || sorted[0][1] > sorted[1][1] + thr) ? sorted[0][0] : false;
-};
+}, 100000);
 
 var softmaxEU = function(agent, alpha) {  
     // return distribution over options
