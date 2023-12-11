@@ -153,6 +153,7 @@ Prints the agent's decision matrix.
 ** update(dist:Distribution, event:Object|Array|Function, method:String) → {Distribution}
 
 Conditionalizes a distribution on an event. The event can be either a state, an
-array of states, or a function state → bool. The final parameter is the method
-passed to the WebPPL 'infer' function; defaults to 'enumerate'.
+array of states, a function state → bool, or a value of a multidimensional
+state, e.g. { 'a': 7 }. The final parameter is the method passed to the WebPPL
+'infer' function; defaults to 'enumerate'.
 

@@ -235,16 +235,19 @@ var pr = function(dist, proposition) {
  * Conditionalizes a distribution on an event.
  *
  * @param {Distribution} distribution - A distribution.
- * @param {Object} event - A "state" or array of states or function state -> boolean.
+ * @param {Object} event - Can be a state or an array of states or a function state -> boolean
+ *                         or a value of a multidimensional state, e.g. { 'a': 7 }.
  * @param {String} inferMethod - The Infer method to use when updating the distribution.
  * @return {Distribution} A distribution that is conditioned on the event.
  */
 var update = function(distribution, event, inferMethod) {
-    // conditionalize distribution on event (state or array of states or function state -> boolean)
     var eventFn =
         _.isFunction(event) ? event :
         _.isArray(event) ? function(state) {
             return any(function(s) { return _.isEqual(state, s) }, event);
+        } :
+        isDict(event) ? function(state) {
+            return _.isEqual(_.pick(state, _.keys(event)), event);
         } :
         function(state) {
             return _.isEqual(state, event);
@@ -255,6 +258,10 @@ var update = function(distribution, event, inferMethod) {
         return state;
     };
     return inferMethod ? Infer({ method: inferMethod, model:model }) : Infer(model);
+};
+
+var isDict = function(x) {
+    return typeof x === 'object' && x !== null && x.constructor === Object;
 };
     
 /**
