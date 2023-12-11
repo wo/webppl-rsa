@@ -428,8 +428,17 @@ var argmaxAll = function(fn, arr) {
 /**
  * Prints the choice dispositions for a family of agents
  */
-var showChoices = function(agent, params1, params2) {
-    return params2 ?
+var showChoices = function(agent, params1, params2, params3) {
+    return params3 ?
+        map(function(param1) {
+            map(function(param2) {
+                map(function(param3) {
+                    display('choice for '+JSON.stringify(param1)+', '+JSON.stringify(param2)+', and '+JSON.stringify(param3)+':');
+                    showChoices(agent(param1, param2, param3));
+                }, params3);
+            }, params2);
+        }, params1) && ''
+        : params2 ?
         map(function(param1) {
             map(function(param2) {
                 display('choice for '+JSON.stringify(param1)+' and '+JSON.stringify(param2)+':');
@@ -457,7 +466,10 @@ var showBestOption = function(agent, params1, params2) {
             display('best option for '+JSON.stringify(param1)+':');
             showBestOption(agent(param1));
         }, params1) && ''
-        : print(bestOption(agent));
+        : function() {
+            var best = bestOption(agent);
+            display(best !== false ? best : 'no best option');
+        }();
 };
 
 var applyFunction = function(fn, args) {
