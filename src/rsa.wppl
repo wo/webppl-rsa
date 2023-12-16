@@ -205,17 +205,30 @@ var join = function(dict) {
 };
 
 /**
+ * Returns the probability of an event in a distribution.
+ *
+ * @param {Distribution} dist - A distribution.
+ * @param {Object} event - Can be a state or an array of states or a function state -> boolean
+ *                         or a value of a multidimensional state, e.g. { 'a': 7 }.
+ * @return {Number} The probability of the event in the distribution.
+ */
+
+var prob = function(dist, event) {
+    var eventFn = createEventFn(event);
+    return Math.exp(marginalize(dist, eventFn).score(true));
+};
+
+/**
  * Returns the quadratic accuracy of a distribution in a state.
  *
  * @param {Distribution} dist - A discrete distribution.
  * @param {Object} state - A "state" or "world" in the distribution.
  * @return {Number} The quadratic accuracy of the distribution.
  */
-
 var quad_accuracy = function(dist, state) {
    return -1*sum(map(function(states) {
        var prop = function(s) { return states.indexOf(s) != -1; };
-       return Math.pow(prop(state) - pr(dist, prop), 2);
+       return Math.pow(prop(state) - prob(dist, prop), 2);
    }, powerset(dist.support())));
 };
 
@@ -225,43 +238,76 @@ var powerset = function(xs) {
     }, [[]], xs);
 };
 
-var pr = function(dist, proposition) {
-    return sum(map(function(s){
-        return Math.exp(dist.score(s));
-    }, filter(proposition, states)));
+var createEventFn = function(event) {
+    // Converts different representations of an event into a function state -> boolean.
+    // The event can be given as 
+    // - a function state -> boolean
+    // - an array of states,
+    // - one or more values of a multidimensional state, e.g. { 'a': 7 },
+    // - a state.
+    return _.isFunction(event) ? event :
+           _.isArray(event) ? function(state) {
+               return any(function(s) { _.isEqual(state, s); }, event);
+           } :
+           isDict(event) ? function(state) {
+               return _.isEqual(_.pick(state, _.keys(event)), event);
+           } :
+           function(state) {
+               return _.isEqual(state, event);
+           };
+};
+
+var isDict = function(x) {
+    return typeof x === 'object' && x !== null && x.constructor === Object;
 };
 
 /**
  * Conditionalizes a distribution on an event.
  *
- * @param {Distribution} distribution - A distribution.
+ * @param {Distribution} dist - A distribution.
  * @param {Object} event - Can be a state or an array of states or a function state -> boolean
  *                         or a value of a multidimensional state, e.g. { 'a': 7 }.
- * @param {String} inferMethod - The Infer method to use when updating the distribution.
+ * @param {Dict} params - Optional parameters:
+ *                        - new_p: The probability of the event in the new distribution.
+ *                        - inferMethod: The WebPPL inference method to use; defaults to 'enumerate'.
  * @return {Distribution} A distribution that is conditioned on the event.
  */
-var update = function(distribution, event, inferMethod) {
-    var eventFn =
-        _.isFunction(event) ? event :
-        _.isArray(event) ? function(state) {
-            return any(function(s) { return _.isEqual(state, s) }, event);
-        } :
-        isDict(event) ? function(state) {
-            return _.isEqual(_.pick(state, _.keys(event)), event);
-        } :
-        function(state) {
-            return _.isEqual(state, event);
-        };
-    var model = function() {
-        var state = sample(distribution);
+var update = function(dist, event, params) {
+    var new_p = params && params.new_p;
+    var inferMethod = params && params.inferMethod || 'enumerate';
+    var eventFn = createEventFn(event);
+    var model = new_p ? jc_model(dist, eventFn, new_p) : c_model(dist, eventFn);
+    var inferArgs = { method: inferMethod, model: model };
+    return Infer(inferArgs);
+};
+
+var c_model = function(dist, eventFn) {
+    // Returns a model that conditions distribution on eventFn.
+    return function() {
+        var state = sample(dist);
         condition(eventFn(state));
         return state;
     };
-    return inferMethod ? Infer({ method: inferMethod, model:model }) : Infer(model);
 };
 
-var isDict = function(x) {
-    return typeof x === 'object' && x !== null && x.constructor === Object;
+var jc_model = function(dist, eventFn, new_p) {
+    // Returns a model that Jeffrey conditions distribution on eventFn.
+    var old_p = prob(dist, eventFn);
+    var factor_yes = Math.log(new_p / old_p);
+    var factor_no = Math.log((1-new_p) / (1-old_p));
+    return function() {
+        var state = sample(dist);
+        factor(eventFn(state) ? factor_yes : factor_no);
+        return state;
+    };
+    // Explanation:
+    // Suppose we Jeffrey condition on { E: new_p, ~E: 1-new_p }.
+    // If S is in E, then P'(s) = P(s) * new_p / P(E).
+    // If S is not in E, then P'(s) = P(s) * (1-new_p) / P(~E).
+    // factor(x) adds x to the log probability of the sampled state;
+    // i.e. it multiples to the probability by exp(x).
+    // In order to multiply the probability by new_p / P(E),
+    // we therefore need to add log(new_p / P(E)) to the log probability.
 };
     
 /**
@@ -275,7 +321,7 @@ var isDict = function(x) {
  *                     if unset, the agent maximizes expected utility
  *   kinematics (optional): a function that specifies how the agent updates its credence
  *                          in response to an input
- *   inferMethod (optional): the Infer method to use when updating the agent's credence
+ *   inferParams (optional): optional update parameters: 'inferMethod', 'new_p'
  * 
  * @return {Object} An agent with the specified properties;
  * @see choice and learn
@@ -321,7 +367,7 @@ var Agent = function(dict) {
         options: dict.options,
         alpha: dict.alpha === undefined ? Infinity : dict.alpha,
         kinematics: dict.kinematics,
-        inferMethod: dict.inferMethod || 'enumerate'
+        inferParams: dict.inferParams,
     });
 };
 
@@ -332,7 +378,7 @@ var learn = cache(function(agent, input) {
     assert(agent.kinematics,
            "Agent must have a kinematics function to learn");
     var kinematics = agent.kinematics;
-    return update(agent.credence, kinematics(input), agent.inferMethod);
+    return update(agent.credence, kinematics(input), agent.inferParams);
 });
 
 /**

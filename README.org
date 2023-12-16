@@ -18,7 +18,7 @@ Defines a representation of an agent (a speaker or hearer).
                      if unset, the agent maximizes expected utility
  - ~kinematics~ (optional): a function that specifies how the agent updates its credence
                           in response to an input
- - ~inferMethod~ (optional): the Infer method to use when updating the agent's credence
+ - ~inferParams~ (optional): optional update parameters: 'inferMethod', 'new_p'
    
 see ~choice~ and ~learn~.
 
@@ -134,6 +134,12 @@ Returns the number of words in a string.
 Partitions an array into an array of arrays based on the return value of a
 function.
 
+** prob(dist:Distribution, event:Object) → {number}
+
+Returns the probability of an event under a distribution.
+The event can be either a state, an array of states, a function state → bool,
+or a value of a multidimensional state, e.g. { 'a': 7 }.
+
 ** showKinematics(agent:Agent, inputs:Array) → {}
 
 Prints the agent's doxastic response to each element in the given list.
@@ -150,10 +156,12 @@ Prints the best option for a family of agents.
 
 Prints the agent's decision matrix.
 
-** update(dist:Distribution, event:Object|Array|Function, method:String) → {Distribution}
+** update(dist:Distribution, event:Object, params:Dict) → {Distribution}
 
-Conditionalizes a distribution on an event. The event can be either a state, an
-array of states, a function state → bool, or a value of a multidimensional
-state, e.g. { 'a': 7 }. The final parameter is the method passed to the WebPPL
-'infer' function; defaults to 'enumerate'.
+Conditionalizes a distribution on an event.
+The event can be either a state, an array of states, a function state → bool, or
+a value of a multidimensional state, e.g. { 'a': 7 }.
+The optional ~params~ argument can specify:
+- ~new_p~: the new probability of the event, trigger an update by Jeffrey conditioning,
+- ~inferMethod~: the method passed to the WebPPL 'infer' function; defaults to 'enumerate'.
 
